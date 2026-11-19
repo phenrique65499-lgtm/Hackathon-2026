@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2faf8c">
+  <title>Controle de saídas — CEEMTI Baixo Guandu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="bar">
+    <div class="bar-inner">
+      <h1>Controle de saídas</h1>
+      <img class="logo" src="/static/logo-ceemti.png" alt="CEEMTI Baixo Guandu">
+    </div>
+  </header>
+
+  <main>
+    <section class="intro">
+      <div class="inner">
+        <div class="intro-heading">
+          <div>
+            <h2>Controle da sala</h2>
+            <p>Toque no botão de um aluno para registrar a saída ou o retorno. O limite é de 3 minutos.</p>
+          </div>
+          <span id="modo" class="mode">Conectando…</span>
+        </div>
+        <p id="aviso" class="notice" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section id="controlesDemo" class="demo-section" hidden>
+      <div class="inner demo-controls">
+        <button id="reiniciar" class="button danger" type="button">Reiniciar simulação</button>
+      </div>
+    </section>
+
+    <section class="students-section">
+      <div class="inner">
+        <div class="section-heading">
+          <h2 id="turmaTitulo">Turmas</h2>
+          <div class="turma-picker">
+            <label for="turma">Turma:</label>
+            <select id="turma" aria-label="Turma"></select>
+          </div>
+          <span id="atualizado" class="muted"></span>
+        </div>
+        <div id="listaAlunos" class="student-list" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="teacher-section">
+      <div class="inner teacher-layout">
+        <div class="panel">
+          <h2>Painel do professor</h2>
+          <form id="formLogin" class="form-row">
+            <label for="pin">PIN do professor</label>
+            <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" required>
+            <button class="button primary" type="submit">Entrar</button>
+          </form>
+          <p id="erroLogin" class="error" role="alert" hidden></p>
+
+          <div id="acoesProfessor" hidden>
+            <div class="teacher-heading">
+              <p class="success">Acesso do professor liberado.</p>
+              <a class="button primary" href="/registros">Ver registros de eventos</a>
+              <button id="sairProfessor" class="button secondary" type="button">Sair</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      let estado = null;
+      let baseRelogio = null;
+      let pinProfessor = "";
+
+      function mostrarAviso(mensagem, erro = false) {
+        const aviso = $("aviso");
+        aviso.textContent = mensagem || "";
+        aviso.classList.toggle("error", erro);
+        aviso.classList.toggle("success", Boolean(mensagem) && !erro);
+      }
+
+      async function chamarApi(url, { metodo = "GET", corpo, autenticada = false } = {}) {
+        const cabecalhos = {};
+        if (corpo !== undefined) cabecalhos["Content-Type"] = "application/json";
+        if (autenticada) cabecalhos["X-PIN"] = pinProfessor;
+        const resposta = await fetch(url, {
+          method: metodo,
+          headers: cabecalhos,
+          body: corpo === undefined ? undefined : JSON.stringify(corpo),
+        });
+        let dados;
+        try {
+          dados = await resposta.json();
+        } catch {
+          dados = {};
+        }
+        if (!resposta.ok) {
+          throw new Error(typeof dados.detail === "string" ? dados.detail : "Não foi possível concluir a ação.");
+        }
+        return dados;
+      }
+
+      async function atualizar() {
+        try {
+          estado = await chamarApi("/api/estado");
+          baseRelogio = { agora: estado.agora, local: performance.now() };
+          $("modo").textContent = estado.demo ? "Modo simulação" : "Modo produção";
+          $("modo").classList.toggle("production", !estado.demo);
+          $("controlesDemo").hidden = !estado.demo;
+          preencherTurmas();
+          desenharAlunos();
+          $("atualizado").textContent = `Limite: ${formatarTempo(estado.limite)}`;
+        } catch (erro) {
+          mostrarAviso(`Não foi possível conectar ao servidor: ${erro.message}`, true);
+          $("modo").textContent = "Sem conexão";
+        }
+      }
+
+      function agora() {
+        if (!baseRelogio) return 0;
+        return baseRelogio.agora + (performance.now() - baseRelogio.local) / 1000;
+      }
+
+      function formatarTempo(segundos) {
+        const total = Math.max(0, Math.floor(segundos));
+        return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+      }
+
+      function elemento(tag, classe, texto) {
+        const node = document.createElement(tag);
+        if (classe) node.className = classe;
+        if (texto !== undefined) node.textContent = texto;
+        return node;
+      }
+
+      function preencherTurmas() {
+        const seletor = $("turma");
+        const selecionada = seletor.value;
+        seletor.replaceChildren(...estado.turmas.map((turma) => {
+          const opcao = elemento("option", "", turma);
+          opcao.value = turma;
+          return opcao;
+        }));
+        if (estado.turmas.includes(selecionada)) seletor.value = selecionada;
+        else if (estado.turmas.length) seletor.value = estado.turmas[0];
+      }
+
+      function desenharAlunos() {
+        const lista = $("listaAlunos");
+        const turma = $("turma").value;
+        const alunos = estado.alunos.filter((aluno) => aluno.turma === turma);
+        lista.replaceChildren();
+        $("turmaTitulo").textContent = turma || "Turmas";
+        if (!alunos.length) {
+          lista.append(elemento("p", "empty", "Nenhum aluno nesta turma. Adicione alunos à lista da turma em turmas.py."));
+          return;
+        }
+
+        alunos.forEach((aluno) => {
+          const fora = aluno.saida !== null;
+          const problema = aluno.estouros >= estado.max;
+          const item = elemento("article", `student-card${fora ? " is-out" : ""}${problema ? " is-problem" : ""}`);
+          const info = elemento("div", "student-info");
+          const nome = elemento("h3", "student-name", aluno.nome);
+          const id = elemento("span", "student-id", `ID ${aluno.id}`);
+          info.append(nome, id);
+
+          const status = elemento("div", "student-status");
+          let textoStatus = fora
+            ? `Fora há ${formatarTempo(agora() - aluno.saida)}`
+            : problema
+              ? (aluno.liberado ? "Problema — 1 saída liberada" : "Aluno problema — bloqueado")
+              : "Na sala";
+          status.append(elemento("span", `status-label${fora ? " out" : problema ? " problem" : ""}`, textoStatus));
+          status.append(elemento("span", "strikes", `Atrasos: ${aluno.estouros}/${estado.max}`));
+
+          const acoes = elemento("div", "student-actions");
+          const tocar = elemento("button", "button primary", fora ? "Registrar retorno" : "Registrar saída");
+          tocar.type = "button";
+          tocar.addEventListener("click", () => executarAcao(`/api/digital/${aluno.id}`));
+          acoes.append(tocar);
+
+          if (pinProfessor && problema && !aluno.liberado) {
+            const liberar = elemento("button", "button secondary", "Liberar 1 saída");
+            liberar.type = "button";
+            liberar.addEventListener("click", () =>
+              executarAcao(`/api/professor/liberar/${aluno.id}`, { autenticada: true }));
+            acoes.append(liberar);
+          }
+          if (pinProfessor && (aluno.estouros > 0 || aluno.liberado)) {
+            const zerar = elemento("button", "button secondary", "Zerar atrasos");
+            zerar.type = "button";
+            zerar.addEventListener("click", () =>
+              executarAcao(`/api/professor/zerar/${aluno.id}`, { autenticada: true }));
+            acoes.append(zerar);
+          }
+
+          item.append(info, status, acoes);
+          lista.append(item);
+        });
+      }
+
+      async function executarAcao(url, opcoes = {}) {
+        mostrarAviso("");
+        try {
+          await chamarApi(url, { metodo: "POST", ...opcoes });
+          await atualizar();
+        } catch (erro) {
+          mostrarAviso(erro.message, true);
+        }
+      }
+
+      $("formLogin").addEventListener("submit", async (evento) => {
+        evento.preventDefault();
+        pinProfessor = $("pin").value;
+        try {
+          await chamarApi("/api/professor/validar", {
+            metodo: "POST",
+            autenticada: true,
+          });
+          sessionStorage.setItem("pinProfessor", pinProfessor);
+          $("acoesProfessor").hidden = false;
+          $("formLogin").hidden = true;
+          $("erroLogin").hidden = true;
+          await atualizar();
+        } catch (erro) {
+          pinProfessor = "";
+          $("erroLogin").textContent = erro.message;
+          $("erroLogin").hidden = false;
+        }
+      });
+
+      $("sairProfessor").addEventListener("click", () => {
+        pinProfessor = "";
+        sessionStorage.removeItem("pinProfessor");
+        $("pin").value = "";
+        $("acoesProfessor").hidden = true;
+        $("formLogin").hidden = false;
+        atualizar();
+      });
+
+      $("turma").addEventListener("change", desenharAlunos);
+
+      $("reiniciar").addEventListener("click", async () => {
+        if (!window.confirm("Reiniciar a simulação e apagar os registros de teste?")) return;
+        await executarAcao("/api/demo/reiniciar");
+      });
+
+      atualizar();
+      pinProfessor = sessionStorage.getItem("pinProfessor") || "";
+      if (pinProfessor) {
+        chamarApi("/api/professor/validar", { metodo: "POST", autenticada: true })
+          .then(() => {
+            $("acoesProfessor").hidden = false;
+            $("formLogin").hidden = true;
+          })
+          .catch(() => {
+            pinProfessor = "";
+            sessionStorage.removeItem("pinProfessor");
+          });
+      }
+      window.setInterval(atualizar, 2000);
+      window.setInterval(() => {
+        if (estado) desenharAlunos();
+      }, 500);
+    })();
+  </script>
+</body>
+</html>
