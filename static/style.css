@@ -60,6 +60,12 @@ input:focus-visible {
   gap: 16px;
 }
 
+.bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .bar h1 {
   margin: 0;
   font-size: clamp(24px, 4vw, 34px);

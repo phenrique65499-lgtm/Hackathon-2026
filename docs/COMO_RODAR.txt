@@ -1,8 +1,13 @@
-Interface web em modo de simulacao (com alunos de exemplo e tempo normal):
+Interface web em modo de simulacao (com os alunos fixos das turmas e tempo normal):
 python servidor.py
 
 A interface abre no navegador em http://127.0.0.1:8000.
 Depois de entrar com o PIN, use "Ver registros de eventos" para abrir a pagina de registros.
+
+Pagina da secretaria (lista os alunos problema: nome, turma e o aviso "Aluno
+problema!", sem mais nenhuma informacao e sem exigir PIN):
+http://127.0.0.1:8000/secretaria
+Ha tambem um link "Secretaria" no topo da pagina principal e da de registros.
 
 Modo de producao (usa data/escola.db):
 python servidor.py --producao

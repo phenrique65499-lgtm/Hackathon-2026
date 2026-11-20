@@ -9,12 +9,12 @@ from fastapi.staticfiles import StaticFiles
 
 import banco
 import regras
+import secretaria
 from relogio import Relogio
 from turmas import TURMAS
 
 DEMO = os.environ.get("MODO_DEMO") == "1"
 PIN = os.environ.get("PIN_PROFESSOR", "1234")
-NOMES_DEMO = ["Ana", "Bruno", "Carla", "Diego", "Elisa"]
 
 banco.iniciar()
 
@@ -37,15 +37,7 @@ def semear_alunos_fixos():
                     (aluno_id, nome.strip()),
                 )
 
-
-def semear():
-    for i, nome in enumerate(NOMES_DEMO, start=1):
-        regras.cadastrar_aluno(i, nome)
-
-
 semear_alunos_fixos()
-if DEMO and not regras.listar_alunos():
-    semear()
 
 relogio = Relogio(max(time.time(), regras.ultimo_instante()))
 eventos = deque(maxlen=12)
@@ -164,13 +156,22 @@ def listar_eventos(x_pin: str = Header(default="")):
     return {"eventos": list(eventos)}
 
 
+@app.get("/secretaria")
+def pagina_secretaria():
+    return FileResponse(PASTA / "static" / "secretaria.html")
+
+
+@app.get("/api/secretaria/problema")
+def problema_secretaria():
+    """Lista enxuta (nome + turma) dos alunos problema, para exibir na secretaria."""
+    return {"alunos": secretaria.alunos_problema()}
+
+
 @app.post("/api/demo/reiniciar")
 def reiniciar():
     exigir_demo()
     regras.resetar_banco()
     semear_alunos_fixos()
-    if not regras.listar_alunos():
-        semear()
     relogio.reiniciar()
     eventos.clear()
     registrar("Simulação reiniciada. Todos os alunos estão na sala.")

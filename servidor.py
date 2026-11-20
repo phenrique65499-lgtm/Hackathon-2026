@@ -1,6 +1,6 @@
 """Inicia a interface web.
 
-    python servidor.py              -> modo simulação (alunos de exemplo, tempo normal)
+    python servidor.py              -> modo simulação (alunos fixos das turmas, tempo normal)
     python servidor.py --producao   -> usa o banco real (escola.db) e relógio em tempo real
 """
 import argparse
