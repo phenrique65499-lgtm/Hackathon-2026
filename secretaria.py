@@ -20,6 +20,10 @@ def alunos_problema():
     """[{"nome": ..., "turma": ...}] dos alunos problema no momento."""
     turma_por_id = _turma_por_id()
     return [
-        {"nome": aluno["nome"], "turma": turma_por_id.get(aluno["id"], "—")}
+        {
+            "id": aluno["id"],
+            "nome": aluno["nome"],
+            "turma": turma_por_id.get(aluno["id"], "—"),
+        }
         for aluno in regras.alunos_problema()
     ]

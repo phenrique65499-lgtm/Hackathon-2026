@@ -41,8 +41,7 @@ def painel_professor():
         print("1) Quem está fora agora")
         print("2) Alunos problema")
         print("3) Liberar aluno problema (autoriza 1 saída)")
-        print("4) Zerar contador de um aluno")
-        print("5) Histórico de um aluno")
+        print("4) Histórico de um aluno")
         print("0) Voltar")
         op = input("> ").strip()
 
@@ -71,12 +70,6 @@ def painel_professor():
         elif op == "4":
             aluno_id = input("ID do aluno: ").strip()
             if aluno_id.isdigit():
-                regras.zerar_contador(int(aluno_id))
-                print("Contador zerado.")
-
-        elif op == "5":
-            aluno_id = input("ID do aluno: ").strip()
-            if aluno_id.isdigit():
                 import time
                 for s in regras.historico(int(aluno_id)):
                     saida = time.strftime("%d/%m %H:%M:%S", time.localtime(s["saida"]))
@@ -85,6 +78,36 @@ def painel_professor():
                     else:
                         dur = regras.fmt(s["retorno"] - s["saida"])
                         print(f"- {saida} | {dur}{' (ESTOUROU)' if s['estourou'] else ''}")
+
+        elif op == "0":
+            return
+
+
+# ---------------- secretaria ----------------
+def painel_secretaria():
+    while True:
+        print("\n=== PAINEL DA SECRETARIA ===")
+        print("1) Alunos problema")
+        print("2) Zerar atrasos de um aluno problema")
+        print("0) Voltar")
+        op = input("> ").strip()
+
+        if op == "1":
+            lista = regras.alunos_problema()
+            if not lista:
+                print("Nenhum aluno problema.")
+            for aluno in lista:
+                print(f"- [{aluno['id']}] {aluno['nome']} | atrasos: {aluno['estouros']}")
+
+        elif op == "2":
+            aluno_id = input("ID do aluno: ").strip()
+            if aluno_id.isdigit():
+                aluno_id = int(aluno_id)
+                if any(aluno["id"] == aluno_id for aluno in regras.alunos_problema()):
+                    regras.zerar_contador(aluno_id)
+                    print("Atrasos zerados.")
+                else:
+                    print("Aluno problema não encontrado.")
 
         elif op == "0":
             return
@@ -111,7 +134,8 @@ def main():
         print("\n=== CONTROLE DE SAÍDA DA SALA ===")
         print("1) Modo porta (sensor de digital)")
         print("2) Painel do professor")
-        print("3) Cadastrar aluno")
+        print("3) Painel da secretaria")
+        print("4) Cadastrar aluno")
         print("0) Sair")
         op = input("> ").strip()
         if op == "1":
@@ -119,6 +143,8 @@ def main():
         elif op == "2":
             painel_professor()
         elif op == "3":
+            painel_secretaria()
+        elif op == "4":
             cadastrar()
         elif op == "0":
             break

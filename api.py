@@ -18,27 +18,6 @@ PIN = os.environ.get("PIN_PROFESSOR", "1234")
 
 banco.iniciar()
 
-
-def semear_alunos_fixos():
-    ids_usados = set()
-    with banco.conectar() as conexao:
-        for turma, alunos in TURMAS.items():
-            for aluno_id, nome in alunos:
-                if not isinstance(aluno_id, int) or aluno_id <= 0 or not nome.strip():
-                    raise ValueError(f"Aluno inválido configurado na turma {turma!r}.")
-                if aluno_id in ids_usados:
-                    raise ValueError(f"O ID {aluno_id} foi cadastrado em mais de uma turma.")
-                ids_usados.add(aluno_id)
-                conexao.execute(
-                    """
-                    INSERT INTO alunos (id, nome) VALUES (?, ?)
-                    ON CONFLICT(id) DO UPDATE SET nome = excluded.nome
-                    """,
-                    (aluno_id, nome.strip()),
-                )
-
-semear_alunos_fixos()
-
 relogio = Relogio(max(time.time(), regras.ultimo_instante()))
 eventos = deque(maxlen=12)
 
@@ -137,11 +116,13 @@ def liberar(aluno_id: int, x_pin: str = Header(default="")):
     return {"ok": True}
 
 
-@app.post("/api/professor/zerar/{aluno_id}")
-def zerar(aluno_id: int, x_pin: str = Header(default="")):
+@app.post("/api/demo/estouro/{aluno_id}")
+def simular_estouros(aluno_id: int, x_pin: str = Header(default="")):
+    exigir_demo()
     exigir_pin(x_pin)
-    regras.zerar_contador(aluno_id)
-    registrar(f"Professor zerou o contador (ID {aluno_id}).", "ok")
+    if not regras.marcar_aluno_problema(aluno_id):
+        raise HTTPException(404, "Aluno não encontrado.")
+    registrar(f"Professor simulou 3/3 atrasos para o aluno (ID {aluno_id}).", "ok")
     return {"ok": True}
 
 
@@ -167,11 +148,19 @@ def problema_secretaria():
     return {"alunos": secretaria.alunos_problema()}
 
 
+@app.post("/api/secretaria/zerar/{aluno_id}")
+def zerar_atrasos_secretaria(aluno_id: int):
+    if not any(aluno["id"] == aluno_id for aluno in secretaria.alunos_problema()):
+        raise HTTPException(404, "Aluno problema não encontrado.")
+    regras.zerar_contador(aluno_id)
+    registrar(f"Secretaria zerou os atrasos do aluno (ID {aluno_id}).", "ok")
+    return {"ok": True}
+
+
 @app.post("/api/demo/reiniciar")
 def reiniciar():
     exigir_demo()
     regras.resetar_banco()
-    semear_alunos_fixos()
     relogio.reiniciar()
     eventos.clear()
     registrar("Simulação reiniciada. Todos os alunos estão na sala.")

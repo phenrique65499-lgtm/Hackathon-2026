@@ -17,11 +17,6 @@ def cadastrar_aluno(aluno_id, nome):
         c.execute("INSERT INTO alunos (id, nome) VALUES (?, ?)", (aluno_id, nome))
 
 
-def listar_alunos():
-    with conectar() as c:
-        return c.execute("SELECT * FROM alunos ORDER BY nome").fetchall()
-
-
 # ---------- digital na porta ----------
 def passar_digital(aluno_id, agora=None):
     """Chamada toda vez que o sensor lê uma digital.
@@ -99,6 +94,16 @@ def zerar_contador(aluno_id):
         c.execute("UPDATE alunos SET estouros = 0, liberado = 0 WHERE id = ?", (aluno_id,))
 
 
+def marcar_aluno_problema(aluno_id):
+    """Define o limite de atrasos para demonstrações."""
+    with conectar() as c:
+        cursor = c.execute(
+            "UPDATE alunos SET estouros = ?, liberado = 0 WHERE id = ?",
+            (LIMITE_ESTOUROS, aluno_id),
+        )
+        return cursor.rowcount > 0
+
+
 def historico(aluno_id):
     with conectar() as c:
         return c.execute(
@@ -128,4 +133,4 @@ def ultimo_instante():
 def resetar_banco():
     with conectar() as c:
         c.execute("DELETE FROM saidas")
-        c.execute("DELETE FROM alunos")
+        c.execute("UPDATE alunos SET estouros = 0, liberado = 0")
