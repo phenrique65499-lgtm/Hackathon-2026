@@ -19,11 +19,25 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
+  min-height: 100%;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
   background: var(--background);
   color: var(--text);
-  font-size: 16px;
+}
+
+header {
+  flex: 0 0 auto;
+}
+
+main {
+  flex: 1 0 auto;
 }
 
 button,
@@ -152,6 +166,10 @@ h2 {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+}
+
+.secretary-password-row {
+  margin-bottom: 16px;
 }
 
 .button {
@@ -444,4 +462,25 @@ button.button:active {
   .student-actions .button {
     width: 100%;
   }
+}
+
+#footer {
+  width: 100%;
+  flex: 0 0 auto;
+  background: var(--teal);
+  color: #fff;
+}
+
+.footer-title {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 34px);
+  line-height: 1.15;
+}
+
+.footer-links {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 16px;
 }

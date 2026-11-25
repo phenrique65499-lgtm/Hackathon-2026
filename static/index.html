@@ -15,43 +15,44 @@
     <div class="bar-inner">
       <h1>Controle de saídas</h1>
       <div class="bar-right">
-        <a class="mode" href="/secretaria">Secretaria</a>
         <img class="logo" src="/static/logo-ceemti.png" alt="CEEMTI Baixo Guandu">
+        <a class="mode" href="/secretaria">Secretaria</a>
       </div>
     </div>
   </header>
-  <section class="teacher-section">
-    <div class="inner teacher-layout">
-      <div class="panel">
-        <h2>Painel do professor</h2>
-        <form id="formLogin" class="form-row">
-          <label for="pin">PIN do professor</label>
-          <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" required>
-          <button class="button primary" type="submit">Entrar</button>
-        </form>
-        <p id="erroLogin" class="error" role="alert" hidden></p>
-
-        <div id="acoesProfessor" hidden>
-          <div class="teacher-heading">
-            <p class="success">Acesso do professor liberado.</p>
-            <a class="button primary" href="/registros">Ver registros de eventos</a>
-            <button id="sairProfessor" class="button secondary" type="button">Sair</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
   <main>
     <section class="intro">
       <div class="inner">
         <div class="intro-heading">
           <div>
-            <h2>Controle da sala</h2>
-            <p>Toque no botão de um aluno para registrar a saída ou o retorno. O limite é de 3 minutos.</p>
+            <h2>Como funciona o processo</h2>
+            <p>Digite o PIN do professor para ver as turmas e os alunos. Escolha a turma e use o botão de cada aluno para registrar uma saída ou o retorno à sala. O tempo máximo fora da sala é de 3 minutos.</p>
           </div>
-          <span id="modo" class="mode">Conectando…</span>
         </div>
         <p id="aviso" class="notice" role="status" aria-live="polite"></p>
+        <span id="modo" class="mode">Conectando…</span>
+      </div>
+    </section>
+
+    <section class="teacher-section">
+      <div class="inner teacher-layout">
+        <div class="panel">
+          <h2>Painel do professor</h2>
+          <form id="formLogin" class="form-row">
+            <label for="pin">PIN do professor</label>
+            <input id="pin" type="password" inputmode="numeric" autocomplete="current-password" required>
+            <button class="button primary" type="submit">Entrar</button>
+          </form>
+          <p id="erroLogin" class="error" role="alert" hidden></p>
+
+          <div id="acoesProfessor" hidden>
+            <div class="teacher-heading">
+              <p class="success">Acesso do professor liberado.</p>
+              <a class="button primary" href="/registros">Ver registros de eventos</a>
+              <button id="sairProfessor" class="button secondary" type="button">Sair</button>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -61,7 +62,7 @@
       </div>
     </section>
 
-    <section class="students-section">
+    <section id="secaoAlunos" class="students-section" hidden>
       <div class="inner">
         <div class="section-heading">
           <h2 id="turmaTitulo">Turmas</h2>
@@ -75,6 +76,17 @@
       </div>
     </section>
   </main>
+
+  <footer id="footer" class="bar">
+    <div class="bar-inner">
+      <h2 class="footer-title">CEEMTI Baixo Guandu</h2>
+      <nav class="footer-links" aria-label="Links do rodapé">
+        <a class="mode" href="#">@Maria</a>
+        <a class="mode" href="#">@Pedro</a>
+        <a class="mode" href="#">@Rhuan</a>
+      </nav>
+    </div>
+  </footer>
 
   <script src="/static/index.js"></script>
 </body>

@@ -6,6 +6,7 @@ import regras
 from sensor import SensorSimulado
 
 PIN_PROFESSOR = os.environ.get("PIN_PROFESSOR", "1234")
+SENHA_SECRETARIA = os.environ.get("SENHA_SECRETARIA", "4321")
 
 
 def criar_sensor():
@@ -104,27 +105,16 @@ def painel_secretaria():
             if aluno_id.isdigit():
                 aluno_id = int(aluno_id)
                 if any(aluno["id"] == aluno_id for aluno in regras.alunos_problema()):
-                    regras.zerar_contador(aluno_id)
-                    print("Atrasos zerados.")
+                    if getpass("Senha da secretaria: ") == SENHA_SECRETARIA:
+                        regras.zerar_contador(aluno_id)
+                        print("Atrasos zerados.")
+                    else:
+                        print("Senha incorreta.")
                 else:
                     print("Aluno problema não encontrado.")
 
         elif op == "0":
             return
-
-
-# ---------------- cadastro ----------------
-def cadastrar():
-    aluno_id = input("ID do aluno (o mesmo gravado no sensor): ").strip()
-    nome = input("Nome: ").strip()
-    if aluno_id.isdigit() and nome:
-        try:
-            regras.cadastrar_aluno(int(aluno_id), nome)
-            print("Aluno cadastrado.")
-        except Exception:
-            print("Já existe um aluno com esse ID.")
-    else:
-        print("Dados inválidos.")
 
 
 def main():
@@ -135,7 +125,6 @@ def main():
         print("1) Modo porta (sensor de digital)")
         print("2) Painel do professor")
         print("3) Painel da secretaria")
-        print("4) Cadastrar aluno")
         print("0) Sair")
         op = input("> ").strip()
         if op == "1":
@@ -144,8 +133,6 @@ def main():
             painel_professor()
         elif op == "3":
             painel_secretaria()
-        elif op == "4":
-            cadastrar()
         elif op == "0":
             break
 

@@ -15,15 +15,16 @@ python servidor.py --producao
 Para definir outro PIN do professor:
 PIN_PROFESSOR=4321 python servidor.py
 
+Para zerar atrasos na secretaria, digite a senha configurada (4321 por padrao).
+Para definir outra senha da secretaria:
+SENHA_SECRETARIA=5678 python servidor.py
+
 Para iniciar sem abrir o navegador automaticamente:
 python servidor.py --sem-navegador
 
-Alunos e turmas fixos:
-Edite o arquivo turmas.py. Cada aluno deve ser informado como (ID_DO_SENSOR, "Nome"),
-dentro da lista da turma correspondente. Os IDs precisam ser unicos entre todas as turmas.
-Os nomes e IDs atuais sao ficticios. Antes de usar o sensor, substitua os nomes e grave
-cada digital no sensor usando o ID numerico correspondente. Confirme tambem que o sensor
-suporta a quantidade de digitais cadastradas.
+Os alunos e as turmas sao definidos em turmas.py. Os nomes e IDs atuais sao ficticios.
+Antes de usar o sensor, substitua-os pelos dados corretos e grave cada digital no sensor
+usando o ID numerico correspondente. Confirme tambem que o sensor suporta todos os IDs.
 
 Aplicacao de terminal, sem interface web:
 python main.py

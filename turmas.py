@@ -1,6 +1,6 @@
 """Turmas e alunos fixos. Os IDs devem corresponder aos IDs gravados no sensor."""
 
-# Estes nomes sao ficticios e os IDs sao sequenciais; cadastre cada digital no sensor
+# Estes nomes sao ficticios e os IDs sao sequenciais; registre cada digital no sensor
 # no mesmo ID correspondente antes de usar em producao.
 TURMAS = {
     "2 ANC 01": [

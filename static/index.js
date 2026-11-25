@@ -5,6 +5,10 @@
   let pinProfessor = "";
   let professorAutenticado = false;
 
+  function atualizarVisibilidadeAlunos() {
+    $("secaoAlunos").hidden = !professorAutenticado;
+  }
+
   function mostrarAviso(mensagem, erro = false) {
     const aviso = $("aviso");
     aviso.textContent = mensagem || "";
@@ -35,15 +39,36 @@
 
   async function atualizar() {
     try {
-      estado = await chamarApi("/api/estado");
+      if (!professorAutenticado) {
+        estado = null;
+        baseRelogio = null;
+        $("modo").textContent = "Entre com o PIN do professor";
+        $("controlesDemo").hidden = true;
+        atualizarVisibilidadeAlunos();
+        return;
+      }
+      estado = await chamarApi("/api/estado", { autenticada: true });
       baseRelogio = { agora: estado.agora, local: performance.now() };
       $("modo").textContent = estado.demo ? "Modo simulação" : "Modo produção";
       $("modo").classList.toggle("production", !estado.demo);
       $("controlesDemo").hidden = !estado.demo;
       preencherTurmas();
       desenharAlunos();
+      atualizarVisibilidadeAlunos();
       $("atualizado").textContent = `Limite: ${formatarTempo(estado.limite)}`;
     } catch (erro) {
+      if (erro.message === "PIN do professor incorreto.") {
+        pinProfessor = "";
+        professorAutenticado = false;
+        sessionStorage.removeItem("pinProfessor");
+        $("acoesProfessor").hidden = true;
+        $("formLogin").hidden = false;
+        $("pin").value = "";
+        atualizarVisibilidadeAlunos();
+        $("modo").textContent = "Autenticação necessária";
+        mostrarAviso("Sessão expirada. Entre novamente com o PIN do professor.", true);
+        return;
+      }
       mostrarAviso(`Não foi possível conectar ao servidor: ${erro.message}`, true);
       $("modo").textContent = "Sem conexão";
     }
@@ -85,7 +110,7 @@
     lista.replaceChildren();
     $("turmaTitulo").textContent = turma || "Turmas";
     if (!alunos.length) {
-      lista.append(elemento("p", "empty", "Nenhum aluno nesta turma. Adicione alunos à lista da turma em turmas.py."));
+      lista.append(elemento("p", "empty", "Nenhum aluno configurado nesta turma."));
       return;
     }
 
@@ -110,7 +135,8 @@
       const acoes = elemento("div", "student-actions");
       const tocar = elemento("button", "button primary", fora ? "Registrar retorno" : "Registrar saída");
       tocar.type = "button";
-      tocar.addEventListener("click", () => executarAcao(`/api/digital/${aluno.id}`));
+      tocar.addEventListener("click", () =>
+        executarAcao(`/api/digital/${aluno.id}`, { autenticada: true }));
       acoes.append(tocar);
 
       if (estado.demo && professorAutenticado && !problema) {
@@ -157,6 +183,7 @@
       $("acoesProfessor").hidden = false;
       $("formLogin").hidden = true;
       $("erroLogin").hidden = true;
+      atualizarVisibilidadeAlunos();
       await atualizar();
     } catch (erro) {
       pinProfessor = "";
@@ -173,13 +200,14 @@
     $("pin").value = "";
     $("acoesProfessor").hidden = true;
     $("formLogin").hidden = false;
+    atualizarVisibilidadeAlunos();
     atualizar();
   });
 
   $("turma").addEventListener("change", desenharAlunos);
   $("reiniciar").addEventListener("click", async () => {
     if (!window.confirm("Reiniciar a simulação e apagar os registros de teste?")) return;
-    await executarAcao("/api/demo/reiniciar");
+    await executarAcao("/api/demo/reiniciar", { autenticada: true });
   });
 
   pinProfessor = sessionStorage.getItem("pinProfessor") || "";
@@ -201,6 +229,7 @@
   }
   window.setInterval(atualizar, 2000);
   window.setInterval(() => {
-    if (estado) desenharAlunos();
+    if (estado && professorAutenticado) desenharAlunos();
   }, 500);
+  atualizarVisibilidadeAlunos();
 })();

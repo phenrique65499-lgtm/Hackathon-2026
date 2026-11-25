@@ -15,6 +15,7 @@ from turmas import TURMAS
 
 DEMO = os.environ.get("MODO_DEMO") == "1"
 PIN = os.environ.get("PIN_PROFESSOR", "1234")
+SENHA_SECRETARIA = os.environ.get("SENHA_SECRETARIA", "4321")
 
 banco.iniciar()
 
@@ -65,7 +66,8 @@ def pagina():
 
 
 @app.get("/api/estado")
-def estado():
+def estado(x_pin: str = Header(default="")):
+    exigir_pin(x_pin)
     alunos = regras.estado_alunos()
     turma_por_id = {
         aluno_id: turma
@@ -100,8 +102,9 @@ def validar_pin(x_pin: str = Header(default="")):
 
 
 @app.post("/api/digital/{aluno_id}")
-def digital(aluno_id: int):
+def digital(aluno_id: int, x_pin: str = Header(default="")):
     """Equivale a encostar o dedo no sensor da porta."""
+    exigir_pin(x_pin)
     status, msg = regras.passar_digital(aluno_id, relogio.agora())
     ruim = status in ("negado", "desconhecido") or "passou de" in msg
     registrar(msg, "bad" if ruim else ("ok" if status == "retorno" else ""))
@@ -149,7 +152,9 @@ def problema_secretaria():
 
 
 @app.post("/api/secretaria/zerar/{aluno_id}")
-def zerar_atrasos_secretaria(aluno_id: int):
+def zerar_atrasos_secretaria(aluno_id: int, x_senha: str = Header(default="")):
+    if x_senha != SENHA_SECRETARIA:
+        raise HTTPException(403, "Senha da secretaria incorreta.")
     if not any(aluno["id"] == aluno_id for aluno in secretaria.alunos_problema()):
         raise HTTPException(404, "Aluno problema não encontrado.")
     regras.zerar_contador(aluno_id)
@@ -158,8 +163,9 @@ def zerar_atrasos_secretaria(aluno_id: int):
 
 
 @app.post("/api/demo/reiniciar")
-def reiniciar():
+def reiniciar(x_pin: str = Header(default="")):
     exigir_demo()
+    exigir_pin(x_pin)
     regras.resetar_banco()
     relogio.reiniciar()
     eventos.clear()

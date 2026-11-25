@@ -11,12 +11,6 @@ def fmt(segundos):
     return f"{segundos // 60:02d}:{segundos % 60:02d}"
 
 
-# ---------- cadastro ----------
-def cadastrar_aluno(aluno_id, nome):
-    with conectar() as c:
-        c.execute("INSERT INTO alunos (id, nome) VALUES (?, ?)", (aluno_id, nome))
-
-
 # ---------- digital na porta ----------
 def passar_digital(aluno_id, agora=None):
     """Chamada toda vez que o sensor lê uma digital.
