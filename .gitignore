@@ -1,2 +1,11 @@
 __pycache__/
 *.py[cod]
+
+# Ambientes virtuais
+.venv/
+.venv-*/
+
+# Configurações locais e segredos
+.env
+.env.*
+!.env.example

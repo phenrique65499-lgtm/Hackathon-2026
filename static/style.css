@@ -87,11 +87,11 @@ input:focus-visible {
 }
 
 .logo {
-  width: 136px;
+  width: 70px;
   height: auto;
   max-height: 136px;
   object-fit: contain;
-  
+  margin-right: 20px;
 }
 
 .intro,
