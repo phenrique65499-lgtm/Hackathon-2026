@@ -2,11 +2,13 @@ import os
 from getpass import getpass
 
 import banco
+import config
 import regras
 from sensor import SensorSimulado
+from seed_alunos import sincronizar
 
-PIN_PROFESSOR = os.environ.get("PIN_PROFESSOR", "1234")
-SENHA_SECRETARIA = os.environ.get("SENHA_SECRETARIA", "4321")
+PIN_PROFESSOR = config.PIN_PROFESSOR
+SENHA_SECRETARIA = config.SENHA_SECRETARIA
 
 
 def criar_sensor():
@@ -119,6 +121,7 @@ def painel_secretaria():
 
 def main():
     banco.iniciar()
+    sincronizar(silencioso=True)
     sensor = criar_sensor()
     while True:
         print("\n=== CONTROLE DE SAÍDA DA SALA ===")

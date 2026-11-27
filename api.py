@@ -1,173 +1,31 @@
-import os
-import time
-from collections import deque
-from pathlib import Path
+"""Ponto de entrada da API.
 
-from fastapi import FastAPI, Header, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse
-from fastapi.staticfiles import StaticFiles
-
+A ordem das linhas abaixo importa: `banco.iniciar()` e `sincronizar()`
+precisam rodar ANTES de importar os routers, porque `routers/professor.py`
+importa `estado.py`, que calcula o relógio simulado consultando a tabela
+`saidas` — ela precisa existir e já estar com os alunos de turmas.py.
+"""
 import banco
-import regras
-import secretaria
-from relogio import Relogio
-from turmas import TURMAS
-
-DEMO = os.environ.get("MODO_DEMO") == "1"
-PIN = os.environ.get("PIN_PROFESSOR", "1234")
-SENHA_SECRETARIA = os.environ.get("SENHA_SECRETARIA", "4321")
 
 banco.iniciar()
 
-relogio = Relogio(max(time.time(), regras.ultimo_instante()))
-eventos = deque(maxlen=12)
+from seed_alunos import sincronizar  # noqa: E402 (import tardio, de propósito — ver docstring)
 
+sincronizar(silencioso=True)
 
-def registrar(texto, cls=""):
-    hora = time.strftime("%H:%M:%S", time.localtime(relogio.agora()))
-    eventos.appendleft({"hora": hora, "texto": texto, "cls": cls})
+from fastapi import FastAPI  # noqa: E402
+from fastapi.staticfiles import StaticFiles  # noqa: E402
 
+import config  # noqa: E402
+from erros import registrar_tratadores_de_erro  # noqa: E402
+from routers import professor, publico, secretaria  # noqa: E402
 
-def exigir_pin(pin):
-    if pin != PIN:
-        raise HTTPException(403, "PIN do professor incorreto.")
+app = FastAPI(title="Controle de Saída Escolar", version="2.0.0")
+registrar_tratadores_de_erro(app)
 
+if config.STATIC_DIR.is_dir():
+    app.mount("/static", StaticFiles(directory=config.STATIC_DIR), name="static")
 
-def exigir_demo():
-    if not DEMO:
-        raise HTTPException(404, "Disponível apenas no modo simulação.")
-
-
-app = FastAPI(title="Controle de saída da sala")
-
-
-PASTA = Path(__file__).parent
-app.mount("/static", StaticFiles(directory=PASTA / "static"), name="static")
-
-
-def achar_pagina():
-    for caminho in (PASTA / "static" / "index.html", PASTA / "index.html"):
-        if caminho.is_file():
-            return caminho
-    return None
-
-
-@app.get("/")
-def pagina():
-    caminho = achar_pagina()
-    if caminho is None:
-        return HTMLResponse(
-            "<h2>Arquivo da página não encontrado</h2>"
-            "<p>Crie a pasta <b>static</b> ao lado de <b>api.py</b> e coloque nela o arquivo "
-            f"<b>index.html</b>.</p><p>Procurei em: <code>{PASTA / 'static' / 'index.html'}</code></p>",
-            status_code=500,
-        )
-    return FileResponse(caminho)
-
-
-@app.get("/api/estado")
-def estado(x_pin: str = Header(default="")):
-    exigir_pin(x_pin)
-    alunos = regras.estado_alunos()
-    turma_por_id = {
-        aluno_id: turma
-        for turma, lista in TURMAS.items()
-        for aluno_id, _ in lista
-    }
-    if DEMO and TURMAS:
-        turma_demo = next(iter(TURMAS))
-        for aluno in alunos:
-            turma_por_id.setdefault(aluno["id"], turma_demo)
-
-    return {
-        "agora": relogio.agora(),
-        "limite": regras.LIMITE_SEGUNDOS,
-        "max": regras.LIMITE_ESTOUROS,
-        "demo": DEMO,
-        "turmas": list(TURMAS),
-        "alunos": [
-            {"id": r["id"], "nome": r["nome"], "estouros": r["estouros"],
-             "liberado": bool(r["liberado"]), "saida": r["saida"],
-             "turma": turma_por_id.get(r["id"])}
-            for r in alunos
-            if r["id"] in turma_por_id
-        ],
-    }
-
-
-@app.post("/api/professor/validar")
-def validar_pin(x_pin: str = Header(default="")):
-    exigir_pin(x_pin)
-    return {"ok": True}
-
-
-@app.post("/api/digital/{aluno_id}")
-def digital(aluno_id: int, x_pin: str = Header(default="")):
-    """Equivale a encostar o dedo no sensor da porta."""
-    exigir_pin(x_pin)
-    status, msg = regras.passar_digital(aluno_id, relogio.agora())
-    ruim = status in ("negado", "desconhecido") or "passou de" in msg
-    registrar(msg, "bad" if ruim else ("ok" if status == "retorno" else ""))
-    return {"status": status, "mensagem": msg}
-
-
-@app.post("/api/professor/liberar/{aluno_id}")
-def liberar(aluno_id: int, x_pin: str = Header(default="")):
-    exigir_pin(x_pin)
-    regras.liberar_aluno(aluno_id)
-    registrar(f"Professor liberou uma saída (ID {aluno_id}).", "ok")
-    return {"ok": True}
-
-
-@app.post("/api/demo/estouro/{aluno_id}")
-def simular_estouros(aluno_id: int, x_pin: str = Header(default="")):
-    exigir_demo()
-    exigir_pin(x_pin)
-    if not regras.marcar_aluno_problema(aluno_id):
-        raise HTTPException(404, "Aluno não encontrado.")
-    registrar(f"Professor simulou 3/3 atrasos para o aluno (ID {aluno_id}).", "ok")
-    return {"ok": True}
-
-
-@app.get("/registros")
-def pagina_registros():
-    return FileResponse(PASTA / "static" / "registros.html")
-
-
-@app.get("/api/professor/eventos")
-def listar_eventos(x_pin: str = Header(default="")):
-    exigir_pin(x_pin)
-    return {"eventos": list(eventos)}
-
-
-@app.get("/secretaria")
-def pagina_secretaria():
-    return FileResponse(PASTA / "static" / "secretaria.html")
-
-
-@app.get("/api/secretaria/problema")
-def problema_secretaria():
-    """Lista enxuta (nome + turma) dos alunos problema, para exibir na secretaria."""
-    return {"alunos": secretaria.alunos_problema()}
-
-
-@app.post("/api/secretaria/zerar/{aluno_id}")
-def zerar_atrasos_secretaria(aluno_id: int, x_senha: str = Header(default="")):
-    if x_senha != SENHA_SECRETARIA:
-        raise HTTPException(403, "Senha da secretaria incorreta.")
-    if not any(aluno["id"] == aluno_id for aluno in secretaria.alunos_problema()):
-        raise HTTPException(404, "Aluno problema não encontrado.")
-    regras.zerar_contador(aluno_id)
-    registrar(f"Secretaria zerou os atrasos do aluno (ID {aluno_id}).", "ok")
-    return {"ok": True}
-
-
-@app.post("/api/demo/reiniciar")
-def reiniciar(x_pin: str = Header(default="")):
-    exigir_demo()
-    exigir_pin(x_pin)
-    regras.resetar_banco()
-    relogio.reiniciar()
-    eventos.clear()
-    registrar("Simulação reiniciada. Todos os alunos estão na sala.")
-    return {"ok": True}
+app.include_router(publico.router)
+app.include_router(professor.router)
+app.include_router(secretaria.router)

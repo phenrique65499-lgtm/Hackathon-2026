@@ -1,23 +1,19 @@
-Interface web em modo de simulacao (com os alunos fixos das turmas e tempo normal):
-python servidor.py
+Interface web em modo de simulacao (com os alunos fixos das turmas):
+python servidor.py --demo
 
 A interface abre no navegador em http://127.0.0.1:8000.
 Depois de entrar com o PIN, use "Ver registros de eventos" para abrir a pagina de registros.
 
-Pagina da secretaria (lista os alunos problema: nome, turma e o aviso "Aluno
-problema!", sem mais nenhuma informacao e sem exigir PIN):
+Pagina da secretaria (exige senha para consultar os alunos problema):
 http://127.0.0.1:8000/secretaria
 Ha tambem um link "Secretaria" no topo da pagina principal e da de registros.
 
-Modo de producao (usa data/escola.db):
-python servidor.py --producao
+Modo de producao (usa data/escola.db; credenciais obrigatorias):
+PIN_PROFESSOR='um-pin-forte-com-8-caracteres-ou-mais' SENHA_SECRETARIA='uma-senha-forte-com-12-caracteres-ou-mais' python servidor.py
 
-Para definir outro PIN do professor:
-PIN_PROFESSOR=4321 python servidor.py
-
-Para zerar atrasos na secretaria, digite a senha configurada (4321 por padrao).
-Para definir outra senha da secretaria:
-SENHA_SECRETARIA=5678 python servidor.py
+Na demonstracao, o PIN do professor e a senha da secretaria sao ambos 1234.
+Em producao, configure credenciais diferentes: PIN com pelo menos 8 caracteres
+e senha da secretaria com pelo menos 12 caracteres.
 
 Para iniciar sem abrir o navegador automaticamente:
 python servidor.py --sem-navegador
@@ -26,8 +22,11 @@ Os alunos e as turmas sao definidos em turmas.py. Os nomes e IDs atuais sao fict
 Antes de usar o sensor, substitua-os pelos dados corretos e grave cada digital no sensor
 usando o ID numerico correspondente. Confirme tambem que o sensor suporta todos os IDs.
 
-Aplicacao de terminal, sem interface web:
-python main.py
+Aplicacao de terminal em modo de demonstracao:
+MODO_DEMO=1 python main.py
+
+Aplicacao de terminal em producao:
+PIN_PROFESSOR='um-pin-forte-com-8-caracteres-ou-mais' SENHA_SECRETARIA='uma-senha-forte-com-12-caracteres-ou-mais' python main.py
 
 Sensor fisico na aplicacao de terminal:
 SENSOR=real PORTA_SENSOR=/dev/ttyUSB0 python main.py

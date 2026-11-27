@@ -3,6 +3,7 @@
 Qualquer sensor só precisa ter um método ler_id() que devolve o ID do aluno
 (ou None se a digital não for reconhecida).
 """
+import time
 
 
 class SensorSimulado:
@@ -16,13 +17,19 @@ class SensorSimulado:
 class SensorAS608:
     """Esqueleto para sensores AS608/R307 (ex.: Raspberry Pi ou USB-serial).
 
-    Requer: pip install adafruit-circuitpython-fingerprint pyserial
+    Instale as dependências opcionais com:
+    pip install -r requirements.txt -r requirements-sensor.txt
     Ajuste a porta serial (ex.: /dev/ttyUSB0 ou COM3) conforme seu hardware.
     """
 
     def __init__(self, porta="/dev/ttyUSB0", baud=57600):
-        import serial
-        import adafruit_fingerprint
+        try:
+            import serial
+            import adafruit_fingerprint
+        except ImportError as exc:
+            raise RuntimeError(
+                "Para usar o sensor físico, instale requirements-sensor.txt."
+            ) from exc
 
         self._lib = adafruit_fingerprint
         self._finger = adafruit_fingerprint.Adafruit_Fingerprint(
@@ -32,7 +39,7 @@ class SensorAS608:
     def ler_id(self):
         print("Aguardando digital...")
         while self._finger.get_image() != self._lib.OK:
-            pass
+            time.sleep(0.05)
         if self._finger.image_2_tz(1) != self._lib.OK:
             return None
         if self._finger.finger_search() != self._lib.OK:

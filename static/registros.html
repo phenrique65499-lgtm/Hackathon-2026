@@ -30,7 +30,7 @@
         <p>Digite o PIN do professor para ver os registros.</p>
         <form id="formLoginRegistros" class="form-row">
           <label for="pinRegistros">PIN do professor</label>
-          <input id="pinRegistros" type="password" inputmode="numeric" autocomplete="current-password" required>
+          <input id="pinRegistros" type="password" autocomplete="current-password" required>
           <button class="button primary" type="submit">Entrar</button>
         </form>
         <p id="erroRegistros" class="error" role="alert" hidden></p>
@@ -60,6 +60,90 @@
     </div>
   </footer>
 
-  <script src="/static/registros.js"></script>
+  <script>
+    (() => {
+      const $ = (id) => document.getElementById(id);
+      let pin = sessionStorage.getItem("pinProfessor") || "";
+
+      async function chamarApi(url, metodo = "GET", pinAtual = pin) {
+        const resposta = await fetch(url, {
+          method: metodo,
+          headers: { "X-PIN": pinAtual },
+        });
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) {
+          const erro = new Error(typeof dados.detalhe === "string" ? dados.detalhe : "Não foi possível carregar os registros.");
+          erro.status = resposta.status;
+          throw erro;
+        }
+        return dados;
+      }
+
+      function mostrarLogin(mensagem = "") {
+        $("painelRegistros").hidden = true;
+        $("loginRegistros").hidden = false;
+        $("erroRegistros").textContent = mensagem;
+        $("erroRegistros").hidden = !mensagem;
+      }
+
+      function mostrarEventos(eventos) {
+        const lista = $("eventos");
+        lista.replaceChildren();
+        $("semEventos").hidden = eventos.length > 0;
+        eventos.forEach((evento) => {
+          const item = document.createElement("li");
+          item.className = evento.cls || "";
+          const hora = document.createElement("time");
+          hora.textContent = evento.hora;
+          item.append(hora, document.createTextNode(` ${evento.texto}`));
+          lista.append(item);
+        });
+        $("painelRegistros").hidden = false;
+        $("loginRegistros").hidden = true;
+        $("avisoRegistros").hidden = true;
+      }
+
+      async function atualizar() {
+        try {
+          const dados = await chamarApi("/api/professor/eventos");
+          mostrarEventos(dados.eventos);
+        } catch (erro) {
+          if (erro.status === 401) {
+            pin = "";
+            sessionStorage.removeItem("pinProfessor");
+            mostrarLogin("PIN inválido. Digite novamente.");
+          } else {
+            $("avisoRegistros").textContent = erro.message;
+            $("avisoRegistros").hidden = false;
+          }
+        }
+      }
+
+      $("formLoginRegistros").addEventListener("submit", async (evento) => {
+        evento.preventDefault();
+        const pinDigitado = $("pinRegistros").value;
+        try {
+          await chamarApi("/api/professor/validar", "POST", pinDigitado);
+          pin = pinDigitado;
+          sessionStorage.setItem("pinProfessor", pin);
+          await atualizar();
+        } catch (erro) {
+          mostrarLogin(erro.message);
+        }
+      });
+
+      $("sairRegistros").addEventListener("click", () => {
+        pin = "";
+        sessionStorage.removeItem("pinProfessor");
+        window.location.href = "/";
+      });
+
+      if (pin) atualizar();
+      else mostrarLogin();
+      window.setInterval(() => {
+        if (pin) atualizar();
+      }, 2000);
+    })();
+  </script>
 </body>
 </html>

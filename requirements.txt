@@ -1,2 +1,7 @@
-fastapi>=0.110
-uvicorn>=0.29
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
+pydantic>=2.6,<3
+
+# Apenas para rodar os testes (opcional em produção)
+pytest>=8.0
+httpx>=0.27

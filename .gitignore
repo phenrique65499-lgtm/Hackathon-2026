@@ -1,11 +1,10 @@
 __pycache__/
-*.py[cod]
-
-# Ambientes virtuais
+*.pyc
+.pytest_cache/
 .venv/
-.venv-*/
-
-# Configurações locais e segredos
+venv/
+data/
+*.db
+*.db-wal
+*.db-shm
 .env
-.env.*
-!.env.example
